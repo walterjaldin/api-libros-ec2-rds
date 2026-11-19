@@ -16,8 +16,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 # ---------- Etapa 3: runtime minimo ----------
 FROM node:22-alpine AS runtime
-ARG APP_VERSION=1.0.0
-ARG GIT_SHA=dev
+ARG APP_VERSION=
+ARG GIT_SHA=local
 ENV NODE_ENV=production \
     PORT=3000 \
     APP_VERSION=${APP_VERSION} \
