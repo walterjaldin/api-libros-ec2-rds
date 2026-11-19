@@ -21,7 +21,12 @@ function createApp({ repo }) {
 
   // Health check: valida que la app y la conexion a RDS esten operativas.
   app.get('/health', async (req, res) => {
-    const base = { version: config.version, commit: config.commit, entorno: config.env };
+    const base = {
+      version: config.version,
+      commit: config.commit,
+      entorno: config.env,
+      uptime_s: Math.round(process.uptime()),
+    };
     try {
       await repo.ping();
       res.json({ status: 'ok', database: 'up', ...base });
