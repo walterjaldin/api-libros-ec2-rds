@@ -358,7 +358,7 @@ Se ejecuta **solo por cambios incorporados a `main`** (`push` a `main`; un `pull
 4. Si pasa, reemplaza el contenedor activo en `127.0.0.1:3000`, el puerto al que apunta Nginx. El 3000 nunca se publica a Internet.
 5. Vuelve a verificar `/health` y `/libros` a través de Nginx. Si falla, **restaura `PREV`** y el workflow falla.
 
-Ejecución exitosa en `main` ([run 44631829904](https://github.com/walterjaldin/api-libros-ec2-rds/actions/runs/44631829904)):
+Ejecución exitosa en `main`:
 
 ![Ejecución de CD](evidencias/t5-06-pipeline-completo-main.png)
 
@@ -409,7 +409,7 @@ Para demostrar el comportamiento ante fallos, `cd.yml` acepta una entrada manual
 
 ### 4.9 Rollback manual
 
-Cada imagen queda en GHCR con el SHA de su commit. El workflow [`rollback.yml`](./.github/workflows/rollback.yml) (`workflow_dispatch`) recibe un tag y lo despliega con la **misma verificación** del CD. Se volvió a la v1.1.0, y los datos siguieron intactos porque viven en RDS. Después se regresó a la v1.2.0:
+Cada imagen queda en GHCR con el SHA de su commit. El workflow [`rollback.yml`](./.github/workflows/rollback.yml) recibe un tag y lo despliega con la **misma verificación** del CD. Se volvió a la v1.1.0, y los datos siguieron intactos porque viven en RDS. Después se regresó a la v1.2.0:
 
 ```bash
 gh workflow run rollback.yml -f tag=994fce8fef30a5f730cd4b7d63122ea2fa84c209   # v1.1.0

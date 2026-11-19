@@ -2,23 +2,19 @@
 
 **Segundo examen parcial — COM610 Trabajando en la Nube**
 
+**Estudiante:** Walter Jaldin Gonzales
 
-**Estudiante:** Walter Jaldin Gonzales (wjg)
-
-[![CI](https://github.com/walterjaldin/api-libros-ec2-rds/actions/workflows/ci.yml/badge.svg)](https://github.com/walterjaldin/api-libros-ec2-rds/actions/workflows/ci.yml)
-[![CD](https://github.com/walterjaldin/api-libros-ec2-rds/actions/workflows/cd.yml/badge.svg)](https://github.com/walterjaldin/api-libros-ec2-rds/actions/workflows/cd.yml)
-
-|                                           |                                                                              |
-| ----------------------------------------- | ---------------------------------------------------------------------------- |
-| **API pública (HTTP, Nginx puerto 80)**   | [http://3.219.43.118](http://3.219.43.118/health)                            |
-| **API pública (HTTPS)**                   | [https://3-219-43-118.sslip.io](https://3-219-43-118.sslip.io)               |
-| **Health check**                          | [https://3-219-43-118.sslip.io/health](https://3-219-43-118.sslip.io/health) |
-| **Libros**                                | [https://3-219-43-118.sslip.io/libros](https://3-219-43-118.sslip.io/libros) |
-| **Documentación Swagger**                 | [https://3-219-43-118.sslip.io/docs](https://3-219-43-118.sslip.io/docs)     |
-| **Ejecución exitosa de CI**               | [Actions › CI › run 44631829896](https://github.com/walterjaldin/api-libros-ec2-rds/actions/runs/44631829896) |
-| **Ejecución exitosa de CD**               | [Actions › CD › run 44631829904](https://github.com/walterjaldin/api-libros-ec2-rds/actions/runs/44631829904) |
-| **Imagen publicada**                      | [ghcr.io/walterjaldin/api-libros-ec2-rds](https://github.com/users/walterjaldin/packages/container/package/api-libros-ec2-rds) |
-| **Informe con evidencias**                | [INFORME.md](./INFORME.md) · carpeta [`evidencias/`](./evidencias)            |
+|                                         |                                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **API pública (HTTP, Nginx puerto 80)** | [http://3.219.43.118](http://3.219.43.118/health)                                                                              |
+| **API pública (HTTPS)**                 | [https://3-219-43-118.sslip.io](https://3-219-43-118.sslip.io)                                                                 |
+| **Health check**                        | [https://3-219-43-118.sslip.io/health](https://3-219-43-118.sslip.io/health)                                                   |
+| **Libros**                              | [https://3-219-43-118.sslip.io/libros](https://3-219-43-118.sslip.io/libros)                                                   |
+| **Documentación Swagger**               | [https://3-219-43-118.sslip.io/docs](https://3-219-43-118.sslip.io/docs)                                                       |
+| **Ejecución exitosa de CI**             | [Actions › CI › run 44631829896](https://github.com/walterjaldin/api-libros-ec2-rds/actions/runs/44631829896)                  |
+| **Ejecución exitosa de CD**             | [Actions › CD › run 44631829904](https://github.com/walterjaldin/api-libros-ec2-rds/actions/runs/44631829904)                  |
+| **Imagen publicada**                    | [ghcr.io/walterjaldin/api-libros-ec2-rds](https://github.com/users/walterjaldin/packages/container/package/api-libros-ec2-rds) |
+| **Informe con evidencias**              | [INFORME.md](./INFORME.md) · carpeta [`evidencias/`](./evidencias)                                                             |
 
 
 ## Ejercicios
@@ -28,35 +24,37 @@
 
 ## Recursos de AWS utilizados (región `us-east-1`)
 
-| Recurso | Nombre / ID | Configuración |
-|---|---|---|
-| VPC | `vpc-0472baee7872fd6dc` (por defecto) | EC2 y RDS en la misma VPC |
-| EC2 | `ec2-api-libros-wjg` (`i-0ca831eaa85bf0cd5`) | Ubuntu 24.04, `t3.micro`, Docker + Nginx |
-| Elastic IP | `eip-api-libros-wjg` — `3.219.43.118` | IP pública estable de la EC2 |
-| Security Group EC2 | `ec2-libros-sg` (Name `ec2-libros-sg-wjg`, `sg-0b465e9ba06a34c6e`) | **22 solo desde mi IP pública** · 80 y 443 desde Internet · sin 3000 ni 3306 |
-| RDS | `rds-libros-wjg` | MySQL 8.4, `db.t4g.micro`, **acceso público deshabilitado**, base `db_libros` |
-| Security Group RDS | `rds-libros-sg` (Name `rds-libros-sg-wjg`, `sg-046dc4478bb0c72dc`) | **3306 solo desde `sg-0b465e9ba06a34c6e`** |
-| Secrets Manager | `rds!db-89c38d6a-…` | Contraseña maestra de RDS generada por AWS |
-| IAM | `ec2-api-libros-role` | La EC2 solo puede leer el secreto de RDS |
-| IAM (OIDC) | `github-actions-deploy-wjg` | GitHub Actions (entorno `production`) solo puede abrir/cerrar el 22 en el SG de la EC2 durante el deploy |
+
+| Recurso            | Nombre / ID                                                        | Configuración                                                                                            |
+| ------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| VPC                | `vpc-0472baee7872fd6dc` (por defecto)                              | EC2 y RDS en la misma VPC                                                                                |
+| EC2                | `ec2-api-libros-wjg` (`i-0ca831eaa85bf0cd5`)                       | Ubuntu 24.04, `t3.micro`, Docker + Nginx                                                                 |
+| Elastic IP         | `eip-api-libros-wjg` — `3.219.43.118`                              | IP pública estable de la EC2                                                                             |
+| Security Group EC2 | `ec2-libros-sg` (Name `ec2-libros-sg-wjg`, `sg-0b465e9ba06a34c6e`) | **22 solo desde mi IP pública** · 80 y 443 desde Internet · sin 3000 ni 3306                             |
+| RDS                | `rds-libros-wjg`                                                   | MySQL 8.4, `db.t4g.micro`, **acceso público deshabilitado**, base `db_libros`                            |
+| Security Group RDS | `rds-libros-sg` (Name `rds-libros-sg-wjg`, `sg-046dc4478bb0c72dc`) | **3306 solo desde `sg-0b465e9ba06a34c6e`**                                                               |
+| Secrets Manager    | `rds!db-89c38d6a-…`                                                | Contraseña maestra de RDS generada por AWS                                                               |
+| IAM                | `ec2-api-libros-role`                                              | La EC2 solo puede leer el secreto de RDS                                                                 |
+| IAM (OIDC)         | `github-actions-deploy-wjg`                                        | GitHub Actions (entorno `production`) solo puede abrir/cerrar el 22 en el SG de la EC2 durante el deploy |
+
 
 ## Endpoints
 
-| Método | Ruta | Descripción | Respuestas |
-|---|---|---|---|
-| GET | `/health` | Estado del servicio y de la conexión a RDS, versión y commit desplegado | 200 / 503 |
-| GET | `/libros` | Lista de libros almacenados en RDS (paginada; filtros `q`, `autor`, `genero`) | 200 |
-| GET | `/libros/:id` | Obtiene un libro | 200 / 400 / 404 |
-| POST | `/libros` | Crea un libro (`titulo`, `autor` y `anio_publicacion` obligatorios) | 201 / 400 / 409 |
-| PUT | `/libros/:id` | Actualiza un libro | 200 / 400 / 404 |
-| DELETE | `/libros/:id` | Elimina un libro | 204 / 400 / 404 |
-| PATCH | `/libros/:id` | Actualización parcial (extra) | 200 / 400 / 404 |
-| GET | `/libros/estadisticas` | Total, disponibles y libros por género (extra) | 200 |
-| GET | `/docs` | Swagger UI (OpenAPI 3) — también `/openapi.json` | 200 |
 
-**Validación:** `titulo` y `autor` no pueden estar vacíos y `anio_publicacion` debe ser un entero válido (entre 1000 y el año actual). Si no se cumple, la API responde `400` con el detalle. Todas las consultas SQL son **parametrizadas** ([`src/repositories/librosRepository.js`](./src/repositories/librosRepository.js)).
+| Método | Ruta                   | Descripción                                                                   | Respuestas      |
+| ------ | ---------------------- | ----------------------------------------------------------------------------- | --------------- |
+| GET    | `/health`              | Estado del servicio y de la conexión a RDS, versión y commit desplegado       | 200 / 503       |
+| GET    | `/libros`              | Lista de libros almacenados en RDS (paginada; filtros `q`, `autor`, `genero`) | 200             |
+| GET    | `/libros/:id`          | Obtiene un libro                                                              | 200 / 400 / 404 |
+| POST   | `/libros`              | Crea un libro (`titulo`, `autor` y `anio_publicacion` obligatorios)           | 201 / 400 / 409 |
+| PUT    | `/libros/:id`          | Actualiza un libro                                                            | 200 / 400 / 404 |
+| DELETE | `/libros/:id`          | Elimina un libro                                                              | 204 / 400 / 404 |
+| PATCH  | `/libros/:id`          | Actualización parcial (extra)                                                 | 200 / 400 / 404 |
+| GET    | `/libros/estadisticas` | Total, disponibles y libros por género (extra)                                | 200             |
+| GET    | `/docs`                | Swagger UI (OpenAPI 3) — también `/openapi.json`                              | 200             |
 
-**Modelo:** [`db.sql`](./db.sql) crea la tabla `libros` con `id`, `titulo`, `autor`, `anio_publicacion` y campos opcionales (`isbn`, `genero`, `editorial`, `paginas`, `disponible`, `created_at`, `updated_at`).
+
+
 
 También se incluye una colección de Postman: [`docs/api-libros.postman_collection.json`](./docs/api-libros.postman_collection.json).
 
@@ -106,13 +104,13 @@ En GitHub Actions, cada ejecución de **CD** termina con el job «4. Verificar d
 
 ## CI/CD
 
-| Workflow | Disparador | Trabajos |
-|---|---|---|
-| [`ci.yml`](./.github/workflows/ci.yml) | `push` y `pull_request` a `main` | `npm ci` + lint + `npm test` · integración con MySQL (extra) |
-| [`cd.yml`](./.github/workflows/cd.yml) | `push` a `main` (no en PR) | 1. Pruebas → 2. Build y push a GHCR (tag = SHA) → 3. Deploy en EC2 → 4. Verificar |
-| [`rollback.yml`](./.github/workflows/rollback.yml) | manual | Restaura una imagen anterior por su tag |
 
-**Secrets de GitHub Actions** (entorno `production`): `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY` y `AWS_ROLE_ARN`. El registro GHCR usa el secret automático `GITHUB_TOKEN`. La configuración de RDS vive solo en `/opt/api-libros/.env` de la EC2, fuera del repositorio y de la imagen. El contenedor escucha en `127.0.0.1:3000`, solo accesible a través de Nginx.
+| Workflow                                           | Disparador                       | Trabajos                                                                          |
+| -------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------- |
+| [`ci.yml`](./.github/workflows/ci.yml)             | `push` y `pull_request` a `main` | `npm ci` + lint + `npm test` · integración con MySQL (extra)                      |
+| [`cd.yml`](./.github/workflows/cd.yml)             | `push` a `main` (no en PR)       | 1. Pruebas → 2. Build y push a GHCR (tag = SHA) → 3. Deploy en EC2 → 4. Verificar |
+| [`rollback.yml`](./.github/workflows/rollback.yml) | manual                           | Restaura una imagen anterior por su tag                                           |
+
 
 ## Estructura del repositorio
 
