@@ -311,11 +311,11 @@ Archivo: [`.github/workflows/ci-cd.yml`](https://github.com/walterjaldin/api-li
 | **Lint (ESLint)**                               | push, PR           | `npm ci` + `npm run lint`                                                                                                                                |
 | **Pruebas unitarias + integración (MySQL)**     | push, PR           | Levanta `mysql:8.4` como *service container*, ejecuta `npm run test:coverage` (umbral 80 %), publica la cobertura en el resumen y como artefacto         |
 | **Build imagen Docker + escaneo + push (GHCR)** | solo push a `main` | Build multi-stage con caché de GitHub Actions, push con tags `SHA`, `v<versión>` y `latest`, escaneo con **Grype**                                       |
-| **Deploy en EC2 (production)**                  | tras el build      | SSH a la EC2: `docker login ghcr.io` con el token temporal del job, descarga [`deploy/deploy.sh`](./deploy/deploy.sh) del mismo commit y lo ejecuta      |
+| **Deploy en EC2 (production)**                  | tras el build      | SSH a la EC2: `docker login ghcr.io` con el token temporal del job, ejecuta el despliegue con health check definido en el propio workflow      |
 | **Smoke test contra la URL pública**            | tras el deploy     | Verifica que `/health` reporte `status=ok`, `database=up` y **el mismo SHA del commit**; luego crea, consulta, modifica y elimina un libro en producción |
 
 
-**Estrategia de despliegue con health check** ([`deploy/deploy.sh`](./deploy/deploy.sh)):
+**Estrategia de despliegue con health check** (paso *Desplegar por SSH con health check* de `ci-cd.yml`, reutilizado en `rollback.yml`):
 
 1. Arranca la nueva versión como `api-libros-new` en `127.0.0.1:3001`.
 2. Espera hasta 60 s a que `/health` responda `200`. Eso implica que la nueva imagen se conecta a RDS.

@@ -139,20 +139,49 @@ jobs:
           IMAGE_REF: ${{ env.IMAGE }}:${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEPLOY_SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/deploy/deploy.sh
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: IMAGE_REF,GHCR_USER,GHCR_TOKEN,DEPLOY_SCRIPT_URL
+          envs: IMAGE_REF,GHCR_USER,GHCR_TOKEN
           script_stop: true
           script: |
             set -e
+            NAME=api-libros
+            ENV_FILE=/opt/api-libros/.env
+            test -f "$ENV_FILE" || { echo "Falta $ENV_FILE con las credenciales de RDS"; exit 1; }
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-            curl -fsSL "$DEPLOY_SCRIPT_URL" -o /opt/api-libros/deploy.sh
-            chmod +x /opt/api-libros/deploy.sh
-            /opt/api-libros/deploy.sh "$IMAGE_REF" || { docker logout ghcr.io; exit 1; }
-            docker logout ghcr.io
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+            # 1) Levantar la nueva version en un puerto alterno solo local (3001)
+            docker pull "$IMAGE_REF"
+            docker rm -f "$NAME-new" >/dev/null 2>&1 || true
+            docker run -d --name "$NAME-new" --env-file "$ENV_FILE" -p 127.0.0.1:3001:3000 "$IMAGE_REF"
+            # 2) Health check (incluye la conexion a RDS)
+            echo "Esperando health check de la nueva version..."
+            ok=0
+            for i in $(seq 1 20); do
+              if curl -sf http://127.0.0.1:3001/health; then ok=1; break; fi
+              sleep 3
+            done
+            echo
+            if [ "$ok" != 1 ]; then
+              echo "Health check FALLIDO: se mantiene la version anterior."
+              docker logs --tail 30 "$NAME-new" || true
+              docker rm -f "$NAME-new" || true
+              exit 1
+            fi
+            # 3) Reemplazar el contenedor activo (Nginx apunta a 127.0.0.1:3000)
+            echo "Health check OK. Activando nueva version..."
+            docker rm -f "$NAME-new"
+            docker rm -f "$NAME" >/dev/null 2>&1 || true
+            docker run -d --name "$NAME" --restart unless-stopped --env-file "$ENV_FILE" \
+              -p 127.0.0.1:3000:3000 "$IMAGE_REF"
+            for i in $(seq 1 20); do
+              if curl -sf http://127.0.0.1/health; then echo; echo "Despliegue completado: $IMAGE_REF"; break; fi
+              sleep 2
+            done
+            docker image prune -f >/dev/null
+            docker ps --filter "name=$NAME"
 
   smoke-test:
     name: Smoke test contra la URL pública
