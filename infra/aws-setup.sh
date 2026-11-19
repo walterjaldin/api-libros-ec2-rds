@@ -2,10 +2,11 @@
 # Aprovisiona la infraestructura del examen con AWS CLI (ejecutar en AWS CloudShell).
 #   export ADMIN_PUBKEY="ssh-ed25519 ..."    # llave publica de administracion
 #   export DEPLOY_PUBKEY="ssh-ed25519 ..."   # llave publica de GitHub Actions
-#   read -s DB_MASTER_PASSWORD; export DB_MASTER_PASSWORD   # nunca en texto plano
 #   bash aws-setup.sh
+# La contrasena maestra de RDS la genera AWS y queda en Secrets Manager
+# (--manage-master-user-password): nunca se escribe ni se muestra.
 set -euo pipefail
-: "${ADMIN_PUBKEY:?}" "${DEPLOY_PUBKEY:?}" "${DB_MASTER_PASSWORD:?}"
+: "${ADMIN_PUBKEY:?}" "${DEPLOY_PUBKEY:?}"
 
 REPO="${REPO:-walterjaldin/api-libros-ec2-rds}"
 P=api-libros
@@ -37,13 +38,25 @@ aws rds create-db-instance \
   --engine mysql --engine-version 8.4 \
   --db-instance-class db.t4g.micro \
   --allocated-storage 20 --storage-type gp3 \
-  --master-username admin --master-user-password "$DB_MASTER_PASSWORD" \
+  --master-username admin --manage-master-user-password \
   --db-name db_libros \
   --vpc-security-group-ids "$RDS_SG" \
   --no-publicly-accessible --no-multi-az \
   --backup-retention-period 1 \
   --tags Key=Project,Value=$P >/dev/null
 echo "RDS rds-libros en creacion..."
+
+SECRET_ARN=$(aws rds describe-db-instances --db-instance-identifier rds-libros --query 'DBInstances[0].MasterUserSecret.SecretArn' --output text)
+echo "Secreto de la contrasena maestra: $SECRET_ARN"
+
+# ---------- Rol IAM de la EC2 (solo puede leer ese secreto) ----------
+aws iam create-role --role-name ec2-api-libros-role --assume-role-policy-document \
+  '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}' >/dev/null
+aws iam put-role-policy --role-name ec2-api-libros-role --policy-name leer-secreto-rds --policy-document \
+  "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"secretsmanager:GetSecretValue\",\"Resource\":\"$SECRET_ARN\"}]}"
+aws iam create-instance-profile --instance-profile-name ec2-api-libros-profile >/dev/null
+aws iam add-role-to-instance-profile --instance-profile-name ec2-api-libros-profile --role-name ec2-api-libros-role
+sleep 15 # propagacion de IAM
 
 # ---------- EC2 ----------
 aws ec2 import-key-pair --key-name admin-api-libros --public-key-material "$(echo -n "$ADMIN_PUBKEY" | base64 -w0)" >/dev/null
@@ -52,6 +65,7 @@ curl -fsSL "https://raw.githubusercontent.com/$REPO/main/infra/user-data.sh" \
   | sed -e "s|__DEPLOY_PUBKEY__|$DEPLOY_PUBKEY|" -e "s|__REPO__|$REPO|" > /tmp/ud.sh
 IID=$(aws ec2 run-instances --image-id "$AMI" --instance-type t3.micro \
   --key-name admin-api-libros --security-group-ids "$EC2_SG" \
+  --iam-instance-profile Name=ec2-api-libros-profile \
   --user-data file:///tmp/ud.sh \
   --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=12,VolumeType=gp3}' \
   --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=ec2-api-libros},{Key=Project,Value=$P}]" \
@@ -73,3 +87,4 @@ echo "ELASTIC_IP=$EIP"
 echo "EC2_SG=$EC2_SG"
 echo "RDS_SG=$RDS_SG"
 echo "RDS_ENDPOINT=$ENDPOINT"
+echo "RDS_SECRET_ARN=$SECRET_ARN"

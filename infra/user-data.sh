@@ -4,7 +4,8 @@
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y ca-certificates curl nginx mysql-client jq
+apt-get install -y ca-certificates curl nginx mysql-client jq openssl
+snap install aws-cli --classic
 curl -fsSL https://get.docker.com | sh
 systemctl enable --now docker
 usermod -aG docker ubuntu
