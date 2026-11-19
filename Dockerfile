@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+
+# ---------- Etapa 1: dependencias completas + lint + pruebas unitarias ----------
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run lint && npm test
+
+# ---------- Etapa 2: solo dependencias de produccion ----------
+FROM node:22-alpine AS prod-deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# ---------- Etapa 3: runtime minimo ----------
+FROM node:22-alpine AS runtime
+ARG APP_VERSION=1.0.0
+ARG GIT_SHA=dev
+ENV NODE_ENV=production \
+    PORT=3000 \
+    APP_VERSION=${APP_VERSION} \
+    GIT_SHA=${GIT_SHA}
+LABEL org.opencontainers.image.title="api-libros" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}"
+# Parches del SO y se elimina npm/corepack (no se usan en runtime)
+RUN apk upgrade --no-cache \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
+WORKDIR /app
+COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/package.json ./
+COPY --from=builder --chown=node:node /app/src ./src
+COPY --from=builder --chown=node:node /app/sql ./sql
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:3000/health || exit 1
+CMD ["node", "src/server.js"]

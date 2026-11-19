@@ -1,0 +1,35 @@
+name: Rollback manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag de imagen a restaurar (SHA de un commit anterior o vX.Y.Z)"
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Restaurar versión anterior en EC2
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ inputs.tag }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: IMAGE_REF,GHCR_USER,GHCR_TOKEN
+          script_stop: true
+          script: |
+            set -e
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            /opt/api-libros/deploy.sh "$IMAGE_REF" || { docker logout ghcr.io; exit 1; }
+            docker logout ghcr.io
