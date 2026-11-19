@@ -49,6 +49,9 @@ run('Integración con MySQL', () => {
     expect(lista.body.total).toBe(1);
     expect((await request(app).get('/libros?autor=García&genero=Novela')).body.total).toBe(1);
 
+    const stats = await request(app).get('/libros/estadisticas');
+    expect(stats.body).toEqual({ total: 1, disponibles: 0, por_genero: [{ genero: 'Novela', cantidad: 1 }] });
+
     expect((await request(app).delete(`/libros/${creado.body.id}`)).status).toBe(204);
     const [after] = await pool.query('SELECT COUNT(*) AS n FROM libros');
     expect(after[0].n).toBe(0);

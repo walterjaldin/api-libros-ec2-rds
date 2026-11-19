@@ -14,6 +14,17 @@ function createMemoryRepo({ failPing = false } = {}) {
       if (genero) rows = rows.filter((l) => l.genero === genero);
       return { total: rows.length, data: rows.slice(offset, offset + limit) };
     },
+    async stats() {
+      const conteo = {};
+      for (const l of libros) conteo[l.genero || 'Sin género'] = (conteo[l.genero || 'Sin género'] || 0) + 1;
+      return {
+        total: libros.length,
+        disponibles: libros.filter((l) => l.disponible).length,
+        por_genero: Object.entries(conteo)
+          .map(([genero, cantidad]) => ({ genero, cantidad }))
+          .sort((a, b) => b.cantidad - a.cantidad || a.genero.localeCompare(b.genero)),
+      };
+    },
     async findById(id) {
       return libros.find((l) => l.id === id) || null;
     },

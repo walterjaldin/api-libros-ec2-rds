@@ -59,6 +59,13 @@ module.exports = {
         },
       },
     },
+    '/libros/estadisticas': {
+      get: {
+        tags: ['Libros'],
+        summary: 'Estadísticas del catálogo (total, disponibles y libros por género)',
+        responses: { 200: { description: 'OK' } },
+      },
+    },
     '/libros/{id}': {
       parameters: [idParam],
       get: {

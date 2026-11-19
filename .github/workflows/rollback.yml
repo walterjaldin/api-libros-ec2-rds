@@ -17,7 +17,7 @@ jobs:
     environment: production
     steps:
       - name: Restaurar versión anterior en EC2
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         env:
           IMAGE_REF: ghcr.io/${{ github.repository }}:${{ inputs.tag }}
           GHCR_USER: ${{ github.actor }}

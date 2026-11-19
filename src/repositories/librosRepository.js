@@ -35,6 +35,20 @@ function createLibrosRepository(pool) {
       return { total, data: rows.map(toLibro) };
     },
 
+    async stats() {
+      const [[totales]] = await pool.query(
+        'SELECT COUNT(*) AS total, COALESCE(SUM(disponible), 0) AS disponibles FROM libros',
+      );
+      const [porGenero] = await pool.query(
+        "SELECT COALESCE(genero, 'Sin género') AS genero, COUNT(*) AS cantidad FROM libros GROUP BY genero ORDER BY cantidad DESC, genero",
+      );
+      return {
+        total: Number(totales.total),
+        disponibles: Number(totales.disponibles),
+        por_genero: porGenero.map((r) => ({ genero: r.genero, cantidad: Number(r.cantidad) })),
+      };
+    },
+
     async findById(id) {
       const [rows] = await pool.query(`SELECT ${COLUMNS} FROM libros WHERE id = ?`, [id]);
       return toLibro(rows[0]);
