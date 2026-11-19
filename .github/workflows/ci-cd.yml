@@ -3,6 +3,7 @@ name: CI/CD - API Libros
 on:
   push:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**"]   # cambios solo de documentacion no redespliegan
   pull_request:
     branches: [main]
   workflow_dispatch:

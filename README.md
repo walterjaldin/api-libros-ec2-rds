@@ -7,10 +7,11 @@
 
 | | |
 |---|---|
-| **API pública** | http://3.219.43.118 |
-| **Health check** | http://3.219.43.118/health |
-| **Libros** | http://3.219.43.118/libros |
-| **Documentación Swagger** | http://3.219.43.118/docs |
+| **API pública (HTTPS)** | https://3-219-43-118.sslip.io |
+| **Health check** | https://3-219-43-118.sslip.io/health |
+| **Libros** | https://3-219-43-118.sslip.io/libros |
+| **Documentación Swagger** | https://3-219-43-118.sslip.io/docs |
+| **Acceso directo por IP elástica (HTTP)** | http://3.219.43.118/health |
 | **Informe con evidencias** | [INFORME.md](./INFORME.md) |
 
 ## Ejercicios
@@ -25,8 +26,8 @@
    push main ──► lint ─┬─► build + scan + push (GHCR) ──► deploy (SSH) ──► smoke test
                  test ─┘                                     │
                                                              ▼
-Internet ──80──► [ EC2 Ubuntu 24.04 · Elastic IP · SG ec2-libros-sg ]
-                   Nginx :80 ──► contenedor api-libros 127.0.0.1:3000
+Internet ──443/80──► [ EC2 Ubuntu 24.04 · Elastic IP 3.219.43.118 · SG ec2-libros-sg ]
+                   Nginx :443 (Let's Encrypt) / :80 ──► contenedor api-libros 127.0.0.1:3000
                                          │ 3306 (solo desde ec2-libros-sg)
                                          ▼
                  [ RDS MySQL 8.4 · privado · SG rds-libros-sg ]
@@ -51,7 +52,7 @@ Internet ──80──► [ EC2 Ubuntu 24.04 · Elastic IP · SG ec2-libros-sg 
 Modelo `libro`: `titulo`, `autor`, `isbn` (ISBN‑10/13, único), `anio_publicacion`, `genero`, `editorial`, `paginas`, `disponible`, `created_at`, `updated_at`.
 
 ```bash
-curl -X POST http://3.219.43.118/libros -H 'Content-Type: application/json' \
+curl -X POST https://3-219-43-118.sslip.io/libros -H 'Content-Type: application/json' \
   -d '{"titulo":"Cien años de soledad","autor":"Gabriel García Márquez","isbn":"978-0307474728","anio_publicacion":1967}'
 ```
 
@@ -72,7 +73,7 @@ También se incluye una colección de Postman: [`docs/api-libros.postman_collect
 ├── .github/workflows/
 │   ├── ci-cd.yml            # lint → test → build/scan/push → deploy → smoke test
 │   └── rollback.yml         # Rollback manual a un tag anterior
-├── deploy/                  # deploy.sh (health check), bootstrap-db.sh, nginx
+├── deploy/                  # deploy.sh (health check), bootstrap-db.sh, enable-https.sh, nginx
 ├── infra/                   # aws-setup.sh (AWS CLI) y user-data de la EC2
 ├── docs/evidencias/         # Capturas del informe
 └── INFORME.md               # Informe paso a paso
