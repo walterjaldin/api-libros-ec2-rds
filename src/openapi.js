@@ -4,7 +4,7 @@ const libroProps = {
   titulo: { type: 'string', maxLength: 200, example: 'Cien años de soledad' },
   autor: { type: 'string', maxLength: 150, example: 'Gabriel García Márquez' },
   isbn: { type: 'string', nullable: true, example: '978-0307474728', description: 'ISBN-10 o ISBN-13 (se aceptan guiones)' },
-  anio_publicacion: { type: 'integer', nullable: true, minimum: 1000, example: 1967 },
+  anio_publicacion: { type: 'integer', minimum: 1000, example: 1967 },
   genero: { type: 'string', nullable: true, example: 'Novela' },
   editorial: { type: 'string', nullable: true, example: 'Sudamericana' },
   paginas: { type: 'integer', nullable: true, minimum: 1, example: 471 },
@@ -75,7 +75,7 @@ module.exports = {
       },
       put: {
         tags: ['Libros'],
-        summary: 'Reemplazar un libro (titulo y autor obligatorios)',
+        summary: 'Reemplazar un libro (titulo, autor y anio_publicacion obligatorios)',
         requestBody: { required: true, content: json('#/components/schemas/LibroInput') },
         responses: { 200: { description: 'Actualizado', content: json('#/components/schemas/Libro') }, ...errors },
       },
@@ -94,7 +94,7 @@ module.exports = {
   },
   components: {
     schemas: {
-      LibroInput: { type: 'object', required: ['titulo', 'autor'], properties: libroProps, additionalProperties: false },
+      LibroInput: { type: 'object', required: ['titulo', 'autor', 'anio_publicacion'], properties: libroProps, additionalProperties: false },
       LibroPatch: { type: 'object', properties: libroProps, additionalProperties: false },
       Libro: {
         type: 'object',

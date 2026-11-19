@@ -83,19 +83,19 @@ ssh-keygen -t ed25519 -C admin-api-libros -f keys/admin_ed25519
 ssh-keygen -t ed25519 -C github-actions-deploy -f keys/deploy_ed25519
 ```
 
-![Paso 1 - Llaves SSH generadas fuera del repositorio](docs/evidencias/paso-01-llaves-ssh.png)
+![Paso 1 - Llaves SSH generadas fuera del repositorio](evidencias/paso-01-llaves-ssh.png)
 
 #### Paso 2 — VPC
 
 Se usó la **VPC por defecto** (`vpc-0472baee7872fd6dc`, `172.31.0.0/16`), donde quedan la EC2 y la RDS para que se comuniquen por la red privada.
 
-![Paso 2 - VPC por defecto](docs/evidencias/paso-02-vpc.png)
+![Paso 2 - VPC por defecto](evidencias/paso-02-vpc.png)
 
 #### Paso 3 — Security Groups
 
 Se creó `ec2-libros-sg` para la EC2, con los puertos 22, 80 y 443. También se creó `rds-libros-sg` para la base de datos, que solo permite el 3306 **desde el SG de la EC2**. El detalle de las reglas está en la sección 3.2.
 
-![Paso 3 - Security Groups creados](docs/evidencias/paso-03-security-groups.png)
+![Paso 3 - Security Groups creados](evidencias/paso-03-security-groups.png)
 
 #### Paso 4 — Base de datos Amazon RDS for MySQL
 
@@ -106,7 +106,7 @@ Se creó la instancia `rds-libros` con estas características:
 - Base inicial `db_libros`.
 - Asociada a `rds-libros-sg`.
 
-![Paso 4 - RDS creada y disponible](docs/evidencias/paso-04-rds-creada.png)
+![Paso 4 - RDS creada y disponible](evidencias/paso-04-rds-creada.png)
 
 #### Paso 5 — Secreto en AWS Secrets Manager
 
@@ -116,7 +116,7 @@ Al crear la RDS se generó automáticamente el secreto `rds!db-89c38d6a-...` con
 
 Se creó el rol `ec2-api-libros-role` con la política `leer-secreto-rds`. Esa política solo permite `secretsmanager:GetSecretValue` sobre el secreto de la RDS. Después se creó el perfil de instancia `ec2-api-libros-profile` para asociar el rol a la EC2.
 
-![Paso 6 - Rol IAM y su política](docs/evidencias/paso-06-rol-iam.png)
+![Paso 6 - Rol IAM y su política](evidencias/paso-06-rol-iam.png)
 
 #### Paso 7 — Par de claves en EC2
 
@@ -135,7 +135,7 @@ Se lanzó la instancia `ec2-api-libros` con estas características:
 
 Se reservó una Elastic IP y se asoció a la instancia, para que la dirección pública (`3.219.43.118`) no cambie si la EC2 se reinicia.
 
-![Paso 9 - Elastic IP asociada](docs/evidencias/paso-09-elastic-ip.png)
+![Paso 9 - Elastic IP asociada](evidencias/paso-09-elastic-ip.png)
 
 #### Paso 10 — Verificación de la EC2
 
@@ -151,31 +151,31 @@ docker --version && nginx -v
 
 **EC2 (`ec2-libros-sg`)**: HTTP 80 y HTTPS 443 abiertos para IPv4 e IPv6, y SSH 22. No hay reglas para 3000 ni 3306.
 
-![Reglas de entrada de ec2-libros-sg](docs/evidencias/t4-02-sg-ec2-reglas-entrada.jpg)
+![Reglas de entrada de ec2-libros-sg](evidencias/t4-02-sg-ec2-reglas-entrada.jpg)
 
 **RDS (`rds-libros-sg`)**: una única regla, MySQL/Aurora 3306 cuyo **origen es el Security Group de la EC2** (`sg-0b465e9ba06a34c6e`), no una IP ni `0.0.0.0/0`.
 
-![Regla de entrada de rds-libros-sg](docs/evidencias/t4-03-sg-rds-solo-desde-ec2.jpg)
+![Regla de entrada de rds-libros-sg](evidencias/t4-03-sg-rds-solo-desde-ec2.jpg)
 
 ### 3.3 Instancia EC2
 
 Instancia `ec2-api-libros` (`t3.micro`) en ejecución, con Elastic IP `3.219.43.118`, rol IAM `ec2-api-libros-role` e IMDSv2 obligatorio.
 
-![Detalle de la instancia EC2](docs/evidencias/t4-04-ec2-instancia.jpg)
+![Detalle de la instancia EC2](evidencias/t4-04-ec2-instancia.jpg)
 
 ### 3.4 Amazon RDS privada
 
 `PubliclyAccessible = False`, MySQL 8.4.11, `db.t4g.micro`, base inicial `db_libros` y la misma VPC que la EC2:
 
-![Propiedades de RDS](docs/evidencias/t4-06-rds-privada-propiedades.jpg)
+![Propiedades de RDS](evidencias/t4-06-rds-privada-propiedades.jpg)
 
 En la consola de RDS se ve que la puerta de enlace a Internet está **desactivada** y que las credenciales maestras están en **Secrets Manager**:
 
-![RDS sin acceso a Internet y credenciales en Secrets Manager](docs/evidencias/t4-07-rds-sin-acceso-internet-secret.jpg)
+![RDS sin acceso a Internet y credenciales en Secrets Manager](evidencias/t4-07-rds-sin-acceso-internet-secret.jpg)
 
 Reglas del grupo de seguridad asociadas a la base de datos (entrada solo desde el SG de la EC2):
 
-![Reglas de SG en RDS](docs/evidencias/t4-08-rds-reglas-sg.jpg)
+![Reglas de SG en RDS](evidencias/t4-08-rds-reglas-sg.jpg)
 
 ### 3.5 Usuario de la aplicación y conexión EC2 → RDS
 
@@ -194,19 +194,19 @@ unset MYSQL_PWD
 
 La conexión desde la EC2 llega a RDS por su **IP privada** (`172.31.97.71`) en el puerto 3306. El usuario de la aplicación tiene los permisos mínimos:
 
-![Conexión EC2 → RDS](docs/evidencias/t4-05-conexion-ec2-rds.png)
+![Conexión EC2 → RDS](evidencias/t4-05-conexion-ec2-rds.png)
 
 ### 3.6 Despliegue de la API
 
 El despliegue lo realiza el pipeline del Tema 5 (sección 4.5). En la EC2 queda el contenedor `api-libros` publicado solo en `127.0.0.1:3000`; Nginx escucha en 80/443; el `.env` tiene permisos `600`, y `certbot.timer` renueva el certificado:
 
-![Estado del servidor EC2](docs/evidencias/t4-16-estado-servidor-ec2.png)
+![Estado del servidor EC2](evidencias/t4-16-estado-servidor-ec2.png)
 
 ### 3.7 Verificación de puertos expuestos
 
 Desde Internet solo responden 22, 80 y 443. Los puertos 3000 (Node.js) y 3306 (MySQL) no son accesibles, y el endpoint de RDS solo resuelve a una IP privada de la VPC:
 
-![Puertos no expuestos](docs/evidencias/t4-15-puertos-no-expuestos.png)
+![Puertos no expuestos](evidencias/t4-15-puertos-no-expuestos.png)
 
 ### 3.8 HTTPS con certificado válido
 
@@ -226,7 +226,7 @@ CONF
 
 El HTTP del dominio redirige con `301` a HTTPS. El acceso directo por la Elastic IP se mantiene por HTTP.
 
-![HTTPS y certificado válido](docs/evidencias/t4-14-https-certificado.png)
+![HTTPS y certificado válido](evidencias/t4-14-https-certificado.png)
 
 ### 3.9 Operaciones CRUD y persistencia en RDS
 
@@ -238,19 +238,19 @@ Se ejecutaron todas las operaciones desde mi equipo contra la URL pública:
 - Validaciones: `400` con detalle de los errores, `409` por ISBN duplicado y `404` por id inexistente.
 - Estadísticas del catálogo.
 
-![CRUD contra la URL pública](docs/evidencias/t4-09-crud-url-publica-1.png)
+![CRUD contra la URL pública](evidencias/t4-09-crud-url-publica-1.png)
 
 **DELETE y persistencia:** el libro creado aparece al consultar **directamente la tabla en RDS** desde la EC2. Tras el `DELETE` (`204`), la API responde `404` y en RDS ya no existe. El resto de los registros permanece en la base de datos, independiente del ciclo de vida del contenedor:
 
-![DELETE y persistencia en RDS](docs/evidencias/t4-10-crud-delete-persistencia-rds.png)
+![DELETE y persistencia en RDS](evidencias/t4-10-crud-delete-persistencia-rds.png)
 
 Vista en el navegador de la documentación Swagger, del listado y del health check:
 
-![Swagger UI por HTTPS](docs/evidencias/t4-11-swagger-https.png)
+![Swagger UI por HTTPS](evidencias/t4-11-swagger-https.png)
 
-![GET /libros en el navegador](docs/evidencias/t4-12-get-libros-navegador.png)
+![GET /libros en el navegador](evidencias/t4-12-get-libros-navegador.png)
 
-![GET /health en el navegador](docs/evidencias/t4-13-health-navegador.png)
+![GET /health en el navegador](evidencias/t4-13-health-navegador.png)
 
 ---
 
@@ -268,11 +268,11 @@ Vista en el navegador de la documentación Swagger, del listado y del health che
 
 **Lint local** (ESLint, 0 errores, 0 advertencias):
 
-![ESLint local](docs/evidencias/t5-01-lint-local.png)
+![ESLint local](evidencias/t5-01-lint-local.png)
 
 **Pruebas locales** con MySQL en Docker: 36 pruebas en verde y cobertura de 97–99 % en líneas y sentencias, por encima del umbral configurado del 80 %:
 
-![Pruebas locales con cobertura](docs/evidencias/t5-02-pruebas-locales-cobertura.png)
+![Pruebas locales con cobertura](evidencias/t5-02-pruebas-locales-cobertura.png)
 
 ### 4.2 Imagen Docker multi-stage
 
@@ -282,13 +282,13 @@ El [`Dockerfile`](./Dockerfile) tiene tres etapas:
 2. **prod-deps**: instala solo las dependencias de producción.
 3. **runtime**: `node:22-alpine` con parches del sistema, sin npm, ejecutándose como usuario `node` (no root), con `HEALTHCHECK` y etiquetas OCI de versión y commit.
 
-![Imagen Docker local](docs/evidencias/t5-03-docker-local.png)
+![Imagen Docker local](evidencias/t5-03-docker-local.png)
 
 ### 4.3 Secretos y entorno `production`
 
 Las credenciales de despliegue son **Environment Secrets** del entorno `production`. La URL pública (`API_URL`) y el interruptor `DEPLOY_ENABLED` son variables del repositorio (no secretas).
 
-![Entorno, secrets y variables](docs/evidencias/t5-04-github-environment-secrets.png)
+![Entorno, secrets y variables](evidencias/t5-04-github-environment-secrets.png)
 
 
 | Nombre            | Tipo                              | Uso                                            |
@@ -329,33 +329,33 @@ El primer push con el despliegue habilitado ejecutó todos los jobs con éxito y
 
 Se creó la rama `feat/estadisticas` con el nuevo endpoint `GET /libros/estadisticas`, sus pruebas y la versión `1.1.0`, y se abrió el [PR #1](https://github.com/walterjaldin/api-libros-ec2-rds/pull/1). En el PR solo se ejecutan **lint y pruebas**; build, deploy y smoke test se **omiten**, de modo que nada llega a producción sin pasar por `main`:
 
-![PR: solo CI](docs/evidencias/t5-05-pr-solo-ci.png)
+![PR: solo CI](evidencias/t5-05-pr-solo-ci.png)
 
 ### 4.7 Merge a `main`: despliegue continuo de la v1.1.0
 
 Al hacer merge del PR, el pipeline completo se ejecutó automáticamente y desplegó la v1.1.0:
 
-![Pipeline completo en main](docs/evidencias/t5-06-pipeline-completo-main.png)
+![Pipeline completo en main](evidencias/t5-06-pipeline-completo-main.png)
 
 **Log del job de pruebas en CI** (MySQL como *service container*):
 
-![Log de pruebas en CI](docs/evidencias/t5-08-log-pruebas-ci.png)
+![Log de pruebas en CI](evidencias/t5-08-log-pruebas-ci.png)
 
 **Escaneo de vulnerabilidades (Grype):** la imagen no tiene vulnerabilidades **CRITICAL ni HIGH**. Hay 3 de severidad **MEDIUM** en `busybox`, que proviene de la imagen base Alpine y no tiene parche disponible. El job está configurado con `severity-cutoff: high` y publica la tabla en el resumen del workflow.
 
-![Escaneo Grype](docs/evidencias/t5-09-escaneo-grype.png)
+![Escaneo Grype](evidencias/t5-09-escaneo-grype.png)
 
 **Log del despliegue con health check:** se ve cómo la nueva versión se valida antes de activarse:
 
-![Log del deploy](docs/evidencias/t5-10-log-deploy-health-check.png)
+![Log del deploy](evidencias/t5-10-log-deploy-health-check.png)
 
 **Smoke test contra producción:** `/health` reporta el SHA del commit desplegado y el CRUD funciona sobre RDS:
 
-![Smoke test](docs/evidencias/t5-11-log-smoke-test.png)
+![Smoke test](evidencias/t5-11-log-smoke-test.png)
 
 **Historial de ejecuciones:**
 
-![Historial de GitHub Actions](docs/evidencias/t5-07-historial-actions.png)
+![Historial de GitHub Actions](evidencias/t5-07-historial-actions.png)
 
 ### 4.8 Rollback
 
@@ -365,15 +365,15 @@ Cada imagen queda en GHCR con el SHA de su commit. El workflow [`rollback.yml`](
 gh workflow run rollback.yml -f tag=610cd66248b7128e1bebd141b0d1a9edf06575da
 ```
 
-![Workflow de rollback](docs/evidencias/t5-12-workflow-rollback.png)
+![Workflow de rollback](evidencias/t5-12-workflow-rollback.png)
 
 Resultado: producción responde con `version: 1.0.0`, el endpoint `/libros/estadisticas` (que no existía en esa versión) deja de estar disponible, y **los datos siguen intactos** porque viven en RDS y no en el contenedor:
 
-![Rollback a v1.0.0](docs/evidencias/t5-13-rollback-v1.0.0.png)
+![Rollback a v1.0.0](evidencias/t5-13-rollback-v1.0.0.png)
 
 Luego se volvió a la última versión (*roll-forward*) con un nuevo push a `main`:
 
-![Roll-forward a la última versión](docs/evidencias/t5-14-roll-forward-final.png)
+![Roll-forward a la última versión](evidencias/t5-14-roll-forward-final.png)
 
 
 

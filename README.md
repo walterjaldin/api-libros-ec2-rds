@@ -63,7 +63,7 @@ También se incluye una colección de Postman: [`docs/api-libros.postman_collect
 │   ├── ci-cd.yml            # lint → test → build/scan/push → deploy → smoke test
 │   └── rollback.yml         # Rollback manual a un tag anterior
 ├── deploy/                  # enable-https.sh y configuración de Nginx
-├── docs/evidencias/         # Capturas del informe
+├── evidencias/         # Capturas del informe
 └── INFORME.md               # Informe paso a paso
 ```
 

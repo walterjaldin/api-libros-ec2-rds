@@ -1,0 +1,69 @@
+name: CI
+
+# Se ejecuta en cada push y pull_request hacia la rama principal.
+# Si una prueba falla, `npm test` termina con código distinto de 0 y la ejecución se marca como fallida.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: npm ci + lint + npm test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Lint (ESLint)
+        run: npm run lint
+      - name: Pruebas (Jest + Supertest, sin RDS real)
+        run: npm test
+
+  integracion:
+    name: Pruebas de integración con MySQL (extra)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_pw   # MySQL efimero del runner, no es una credencial real
+          MYSQL_DATABASE: db_libros
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci_root_pw"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      RUN_INTEGRATION: "1"
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ci_root_pw
+      DB_NAME: db_libros
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pruebas unitarias + integración con cobertura (umbral 80%)
+        run: npm run test:coverage
+      - name: Resumen de cobertura
+        if: always()
+        run: |
+          echo "### Cobertura de pruebas" >> "$GITHUB_STEP_SUMMARY"
+          node -e "const c=require('./coverage/coverage-summary.json').total;for(const k of ['statements','branches','functions','lines'])console.log('- **'+k+'**: '+c[k].pct+'%')" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage
+          path: coverage/

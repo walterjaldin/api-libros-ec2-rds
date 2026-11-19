@@ -1,17 +1,23 @@
-// Crea la tabla si no existe. Es idempotente: se ejecuta en cada arranque.
+// Ejecuta db.sql al arrancar. Es idempotente (CREATE TABLE IF NOT EXISTS).
 const fs = require('fs');
 const path = require('path');
 
-const schema = fs.readFileSync(path.join(__dirname, '..', '..', 'sql', 'schema.sql'), 'utf8');
+const DB_SQL = path.join(__dirname, '..', '..', 'db.sql');
 
-async function migrate(pool) {
-  const statements = schema
+function statementsFrom(sql) {
+  return sql
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('--'))
+    .join('\n')
     .split(';')
     .map((s) => s.trim())
-    .filter((s) => s && !s.startsWith('--'));
-  for (const sql of statements) {
+    .filter(Boolean);
+}
+
+async function migrate(pool) {
+  for (const sql of statementsFrom(fs.readFileSync(DB_SQL, 'utf8'))) {
     await pool.query(sql);
   }
 }
 
-module.exports = { migrate };
+module.exports = { migrate, statementsFrom };

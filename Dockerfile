@@ -34,7 +34,7 @@ WORKDIR /app
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/package.json ./
 COPY --from=builder --chown=node:node /app/src ./src
-COPY --from=builder --chown=node:node /app/sql ./sql
+COPY --from=builder --chown=node:node /app/db.sql ./db.sql
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \

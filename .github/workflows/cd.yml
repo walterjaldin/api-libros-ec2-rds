@@ -1,0 +1,222 @@
+name: CD
+
+# Despliegue continuo: solo por cambios incorporados a la rama principal (un pull_request NO despliega).
+# Orden de trabajos dependientes: pruebas -> build y push de la imagen (tag = SHA) -> deploy en EC2 -> verificacion.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "evidencias/**", "docs/**"]   # cambios solo de documentacion no redespliegan
+  workflow_dispatch:
+    inputs:
+      simular_fallo:
+        description: "Demostracion: la nueva version recibe un DB_HOST invalido para comprobar que se conserva la version anterior"
+        type: boolean
+        default: false
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  test:
+    name: 1. Pruebas
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  build-and-push:
+    name: 2. Build y push de la imagen (GHCR, tag = SHA)
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Leer versión de package.json
+        id: ver
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Build (multi-stage) y push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          build-args: |
+            APP_VERSION=${{ steps.ver.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:v${{ steps.ver.outputs.version }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Escaneo de vulnerabilidades (Grype)
+        uses: anchore/scan-action@v7
+        id: scan
+        with:
+          image: ${{ env.IMAGE }}:${{ github.sha }}
+          fail-build: false
+          severity-cutoff: high
+          output-format: table
+      - name: Resumen
+        if: always()
+        run: |
+          echo "### Imagen publicada" >> "$GITHUB_STEP_SUMMARY"
+          echo '`${{ env.IMAGE }}:${{ github.sha }}`' >> "$GITHUB_STEP_SUMMARY"
+          echo "### Escaneo de vulnerabilidades (Grype)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat "${{ steps.scan.outputs.table }}" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "Sin hallazgos" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: 3. Deploy en EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.API_URL }}/health
+    permissions:
+      contents: read
+      packages: read
+      id-token: write   # OIDC hacia AWS
+    steps:
+      - name: Credenciales temporales de AWS (OIDC, sin claves guardadas)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Abrir SSH (22) solo para la IP de este runner
+        id: sg
+        run: |
+          ip=$(curl -fsS https://checkip.amazonaws.com)
+          aws ec2 authorize-security-group-ingress --group-id "${{ vars.EC2_SG_ID }}" --ip-permissions \
+            "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$ip/32,Description=github-actions-temporal}]" >/dev/null
+          echo "ip=$ip" >> "$GITHUB_OUTPUT"
+          echo "Regla temporal agregada: 22/tcp desde $ip/32"
+
+      - name: Desplegar por SSH con verificación previa
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          IMAGE_REF: ${{ env.IMAGE }}:${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIMULAR_FALLO: ${{ inputs.simular_fallo || false }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: IMAGE_REF,GHCR_USER,GHCR_TOKEN,SIMULAR_FALLO
+          script: |
+            set -e
+            NAME=api-libros
+            ENV_FILE=/opt/api-libros/.env   # configuracion de RDS: solo en la EC2, fuera del repo y de la imagen
+            test -f "$ENV_FILE" || { echo "Falta $ENV_FILE con las credenciales de RDS"; exit 1; }
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+
+            verificar() {  # $1 = URL base. Comprueba /health y una consulta a /libros
+              curl -sf "$1/health" && echo && curl -sf -o /dev/null "$1/libros?limit=1" && echo "GET /libros OK"
+            }
+
+            PREV=$(docker inspect -f '{{.Config.Image}}' "$NAME" 2>/dev/null || true)
+            echo "Version activa antes del despliegue: ${PREV:-ninguna}"
+
+            # 1) Levantar la nueva version en un puerto alterno solo local (3001)
+            EXTRA=""
+            if [ "$SIMULAR_FALLO" = "true" ]; then
+              echo "*** SIMULACION DE FALLO: la nueva version recibe un DB_HOST invalido ***"
+              EXTRA="-e DB_HOST=bd-inexistente.invalid"
+            fi
+            docker pull "$IMAGE_REF"
+            docker rm -f "$NAME-new" >/dev/null 2>&1 || true
+            docker run -d --name "$NAME-new" --env-file "$ENV_FILE" $EXTRA -p 127.0.0.1:3001:3000 "$IMAGE_REF"
+
+            # 2) Verificar la nueva version ANTES de exponerla
+            echo "Verificando la nueva version (/health y /libros)..."
+            ok=0
+            for i in $(seq 1 20); do
+              if verificar http://127.0.0.1:3001; then ok=1; break; fi
+              sleep 3
+            done
+            if [ "$ok" != 1 ]; then
+              echo "Verificacion FALLIDA: se conserva la version anterior (${PREV:-ninguna})."
+              docker logs --tail 15 "$NAME-new" || true
+              docker rm -f "$NAME-new" || true
+              exit 1
+            fi
+
+            # 3) Reemplazar el contenedor activo (Nginx :80 -> 127.0.0.1:3000; el 3000 no se expone)
+            echo "Verificacion OK. Activando nueva version..."
+            docker rm -f "$NAME-new"
+            docker rm -f "$NAME" >/dev/null 2>&1 || true
+            docker run -d --name "$NAME" --restart unless-stopped --env-file "$ENV_FILE" \
+              -p 127.0.0.1:3000:3000 "$IMAGE_REF"
+
+            # 4) Verificar a traves de Nginx; si falla, restaurar la version anterior
+            ok=0
+            for i in $(seq 1 20); do
+              if verificar http://127.0.0.1; then ok=1; break; fi
+              sleep 2
+            done
+            if [ "$ok" != 1 ]; then
+              echo "La nueva version no responde por Nginx. Restaurando ${PREV}..."
+              docker rm -f "$NAME" || true
+              [ -n "$PREV" ] && docker run -d --name "$NAME" --restart unless-stopped --env-file "$ENV_FILE" -p 127.0.0.1:3000:3000 "$PREV"
+              exit 1
+            fi
+            echo "Despliegue completado: $IMAGE_REF"
+            docker image prune -f >/dev/null
+            docker ps --filter "name=$NAME"
+
+      - name: Cerrar SSH para el runner (siempre, aunque falle el despliegue)
+        if: always() && steps.sg.outputs.ip != ''
+        run: |
+          aws ec2 revoke-security-group-ingress --group-id "${{ vars.EC2_SG_ID }}" --ip-permissions \
+            "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${{ steps.sg.outputs.ip }}/32}]" >/dev/null
+          echo "Regla temporal eliminada: 22/tcp desde ${{ steps.sg.outputs.ip }}/32"
+
+  verify:
+    name: 4. Verificar despliegue (/health y /libros)
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar versión desplegada, /health, /libros y CRUD sobre RDS
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          set -euo pipefail
+          health=$(curl -sf "$API_URL/health")
+          echo "$health"
+          echo "$health" | jq -e --arg sha "$GITHUB_SHA" '.status=="ok" and .database=="up" and .commit==$sha'
+          echo "GET /libros -> total=$(curl -sf "$API_URL/libros" | jq .total)"
+          id=$(curl -sf -X POST "$API_URL/libros" -H 'Content-Type: application/json' \
+               -d "{\"titulo\":\"Verificación CD ${GITHUB_RUN_ID}\",\"autor\":\"GitHub Actions\",\"anio_publicacion\":2026}" | jq -r .id)
+          echo "Libro de prueba creado con id=$id"
+          curl -sf "$API_URL/libros/$id" | jq -c .
+          curl -sf -X PUT "$API_URL/libros/$id" -H 'Content-Type: application/json' \
+               -d '{"titulo":"Verificación CD (editado)","autor":"GitHub Actions","anio_publicacion":2026}' | jq -e '.titulo=="Verificación CD (editado)"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$API_URL/libros/$id")" = 204
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/libros/$id")" = 404
+          echo "Verificación OK"

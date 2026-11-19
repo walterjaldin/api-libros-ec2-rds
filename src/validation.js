@@ -6,7 +6,7 @@ const FIELDS = {
   titulo: { type: 'string', max: 200, required: true },
   autor: { type: 'string', max: 150, required: true },
   isbn: { type: 'isbn' },
-  anio_publicacion: { type: 'int', min: 1000, max: CURRENT_YEAR },
+  anio_publicacion: { type: 'int', min: 1000, max: CURRENT_YEAR, required: true },
   genero: { type: 'string', max: 80 },
   editorial: { type: 'string', max: 120 },
   paginas: { type: 'int', min: 1, max: 100000 },
@@ -28,7 +28,8 @@ function validateLibro(body, { partial = false } = {}) {
   for (const [name, rule] of Object.entries(FIELDS)) {
     const raw = body[name];
     if (raw === undefined || raw === null || raw === '') {
-      if (rule.required && !partial) errors.push(`${name} es obligatorio`);
+      // En PATCH se permite omitir campos obligatorios, pero no vaciarlos
+      if (rule.required && (!partial || raw !== undefined)) errors.push(`${name} es obligatorio`);
       else if (raw === null && !rule.required) value[name] = null;
       continue;
     }
