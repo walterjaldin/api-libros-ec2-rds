@@ -23,7 +23,7 @@ chown ubuntu:ubuntu /opt/api-libros
 chmod 750 /opt/api-libros
 
 # Nginx como proxy inverso 80 -> 127.0.0.1:3000
-# (se omite el bloque HTTPS hasta obtener el certificado con certbot; ver INFORME.md, paso 4.8)
+# (se omite el bloque HTTPS hasta obtener el certificado con certbot; ver INFORME.md, sección 3.8)
 curl -fsSL "https://raw.githubusercontent.com/__REPO__/main/deploy/nginx-api-libros.conf" \
   | sed '/^# HTTPS con/,/^}$/d' > /etc/nginx/sites-available/api-libros
 rm -f /etc/nginx/sites-enabled/default
