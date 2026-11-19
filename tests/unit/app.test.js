@@ -16,7 +16,7 @@ describe('Requisitos mínimos del examen', () => {
   test('GET /health responde 200 e indica que el servicio está activo', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok', database: 'up' });
+    expect(res.body).toMatchObject({ status: 'ok', database: 'up', uptime_s: expect.any(Number) });
   });
 
   test('POST /libros con datos válidos crea el libro y responde 201 con el registro', async () => {

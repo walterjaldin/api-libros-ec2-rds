@@ -1,6 +1,6 @@
 {
   "name": "api-libros",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "API REST de libros (Express + MySQL) desplegada en Amazon EC2 con Amazon RDS y CI/CD con GitHub Actions",
   "main": "src/server.js",
   "directories": {
