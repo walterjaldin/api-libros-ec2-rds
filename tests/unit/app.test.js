@@ -73,6 +73,18 @@ describe('API de libros (repositorio en memoria)', () => {
     expect(pagina2.body.data[0].titulo).toBe('Clean Code');
   });
 
+  test('GET /libros/estadisticas resume el catálogo', async () => {
+    await request(app).post('/libros').send(nuevo);
+    await request(app).post('/libros').send({ titulo: 'Clean Code', autor: 'Robert C. Martin', disponible: false });
+    const res = await request(app).get('/libros/estadisticas');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      total: 2,
+      disponibles: 1,
+      por_genero: [{ genero: 'Novela', cantidad: 1 }, { genero: 'Sin género', cantidad: 1 }],
+    });
+  });
+
   test('POST /libros con datos inválidos responde 400 con detalles', async () => {
     const res = await request(app).post('/libros').send({ titulo: '' });
     expect(res.status).toBe(400);

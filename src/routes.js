@@ -13,6 +13,11 @@ function librosRouter(repo) {
     res.json({ page, limit, total, data });
   });
 
+  // Estadisticas del catalogo (antes de /:id para que no se interprete como id)
+  router.get('/estadisticas', async (req, res) => {
+    res.json(await repo.stats());
+  });
+
   router.get('/:id', async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'El id debe ser un entero positivo' });

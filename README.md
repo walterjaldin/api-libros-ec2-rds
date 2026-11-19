@@ -41,6 +41,7 @@ Internet ──80──► [ EC2 Ubuntu 24.04 · Elastic IP · SG ec2-libros-sg 
 | GET | `/health` | Estado de la API y de la conexión a RDS, versión y commit desplegado | 200 / 503 |
 | GET | `/docs` | Swagger UI (OpenAPI 3) — también `/openapi.json` | 200 |
 | GET | `/libros` | Lista paginada. Filtros: `q`, `autor`, `genero`, `page`, `limit` | 200 |
+| GET | `/libros/estadisticas` | Total, disponibles y libros por género | 200 |
 | GET | `/libros/:id` | Obtiene un libro | 200 / 400 / 404 |
 | POST | `/libros` | Crea un libro (`titulo` y `autor` obligatorios) | 201 / 400 / 409 |
 | PUT | `/libros/:id` | Reemplaza un libro | 200 / 400 / 404 |

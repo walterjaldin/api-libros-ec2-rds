@@ -15,7 +15,7 @@ function createApp({ repo }) {
       nombre: 'API REST de Libros',
       version: config.version,
       documentacion: '/docs',
-      endpoints: ['/health', '/libros', '/libros/:id'],
+      endpoints: ['/health', '/libros', '/libros/estadisticas', '/libros/:id'],
     });
   });
 

@@ -23,8 +23,8 @@ jobs:
     name: Lint (ESLint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -52,8 +52,8 @@ jobs:
       DB_PASSWORD: ci_root_pw
       DB_NAME: db_libros
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -65,7 +65,7 @@ jobs:
         run: |
           echo "### Cobertura de pruebas" >> "$GITHUB_STEP_SUMMARY"
           node -e "const c=require('./coverage/coverage-summary.json').total;for(const k of ['statements','branches','functions','lines'])console.log('- **'+k+'**: '+c[k].pct+'%')" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage
@@ -81,9 +81,9 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -92,7 +92,7 @@ jobs:
         id: ver
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Build (multi-stage, ejecuta lint y tests dentro) y push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
@@ -106,7 +106,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Escaneo de vulnerabilidades (Grype)
-        uses: anchore/scan-action@v6
+        uses: anchore/scan-action@v7
         id: scan
         with:
           image: ${{ env.IMAGE }}:${{ github.sha }}
@@ -133,7 +133,7 @@ jobs:
       packages: read
     steps:
       - name: Desplegar por SSH con health check
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         env:
           IMAGE_REF: ${{ env.IMAGE }}:${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
